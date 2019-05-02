@@ -30,25 +30,43 @@ test_df.set_index('id', inplace=True)
 train_y_label = np.where(train_df['target'] >= 0.5, 1, 0)
 train_df.drop(['target'], axis=1, inplace=True)
 
+
+## Clean Punctuation
+def clean_punc(data):
+    punct = "/-'?!.,#$%\'()*+-/:;<=>@[\\]^_`{|}~`" + '""“”’' + '∞θ÷α•à−β∅³π‘₹´°£€\×™√²—–&'
+    def clean_special_chars(text, punct):
+        for p in punct:
+            text = text.replace(p, ' ')
+        return text
+
+    data = data.astype(str).apply(lambda x: clean_special_chars(x, punct))
+    return data
+X_train = clean_punc(train_df['comment_text'])
+X_test = clean_punc(test_df['comment_text'])
+
 ## tokenize
 max_words = 100000
 max_len = 220
 
 tokenizer = text.Tokenizer(num_words=max_words)
-tokenizer.fit_on_texts(train_df['comment_text'])
+tokenizer.fit_on_texts(X_train)
 # texts_to_sequences
-sequences_text_train = tokenizer.texts_to_sequences(train_df['comment_text'])
-sequences_text_test = tokenizer.texts_to_sequences(test_df['comment_text'])
+sequences_text_train = tokenizer.texts_to_sequences(X_train)
+sequences_text_test = tokenizer.texts_to_sequences(X_test)
 # add padding
 pad_train = sequence.pad_sequences(sequences_text_train, maxlen=max_len)
 pad_test = sequence.pad_sequences(sequences_text_test, maxlen=max_len)
 
-## embedding + LSTM layers
+## Embedding + LSTM layers
 # model define
 model = models.Sequential()
 model.add(layers.Embedding(max_words, 128, input_length=max_len))
-model.add(layers.Bidirectional(layers.LSTM(64, dropout=0.5, recurrent_dropout=0.3, return_sequences=True)))
-model.add(layers.Bidirectional(layers.LSTM(64, dropout=0.5, recurrent_dropout=0.3, return_sequences=True)))
+model.add(layers.Bidirectional(layers.CuDNNLSTM(64, return_sequences=True)))
+model.add(layers.Dropout(0.5))
+model.add(layers.BatchNormalization())
+model.add(layers.Bidirectional(layers.CuDNNLSTM(64, return_sequences=True)))
+model.add(layers.Dropout(0.5))
+model.add(layers.BatchNormalization())
 
 model.add(layers.Flatten())
 model.add(layers.Dense(32, activation='relu'))
@@ -65,14 +83,14 @@ print(model.summary())
 
 # keras.callbacks
 callbacks_list = [ReduceLROnPlateau(
-                        monitor='val_loss', patience=2, factor=0.2),	# val_loss가 patience동안 향상되지 않으면 학습률을 0.2만큼 감소 (new_lr = lr * factor)
+                        monitor='val_acc', patience=2, factor=0.2),	# val_loss가 patience동안 향상되지 않으면 학습률을 0.2만큼 감소 (new_lr = lr * factor)
                     ModelCheckpoint(
-                        filepath='best_model.h5', monitor='val_loss', save_best_only=True)]
+                        filepath='best_model.h5', monitor='val_acc', save_best_only=True)]
 
 history = model.fit(pad_train, train_y_label,
-                     epochs=2, batch_size=1024,
+                     epochs=5, batch_size=1024,
                      callbacks=callbacks_list, 
-                     validation_split=0.3)
+                     validation_split=0.2, verbose=2)
                      
 ## predict test_set
 test_pred = model.predict(pad_test)
