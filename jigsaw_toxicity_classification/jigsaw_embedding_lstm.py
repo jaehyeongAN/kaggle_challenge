@@ -1,4 +1,4 @@
-# This Python 3 environment comes with many helpful analytics libraries installed
+# Python 3 environment comes with many helpful analytics libraries installed
 # It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load in 
 
@@ -45,26 +45,23 @@ pad_test = sequence.pad_sequences(sequences_text_test, maxlen=max_len)
 
 ## embedding + LSTM layers
 # model define
-embed_input = layers.Input(shape=(None,))
-embed_model = layers.Embedding(max_words, 128, input_length=max_len)(embed_input)
-embed_model = layers.Bidirectional(layers.LSTM(64, dropout=0.3, recurrent_dropout=0.3, return_sequences=True))(embed_model)
-embed_model = layers.Bidirectional(layers.LSTM(64, dropout=0.3, recurrent_dropout=0.3, return_sequences=True))(embed_model)
+model = models.Sequential()
+model.add(layers.Embedding(max_words, 128, input_length=max_len))
+model.add(layers.Bidirectional(layers.LSTM(64, dropout=0.5, recurrent_dropout=0.3, return_sequences=True)))
+model.add(layers.Bidirectional(layers.LSTM(64, dropout=0.5, recurrent_dropout=0.3, return_sequences=True)))
 
-embed_model = layers.Flatten()(embed_model)
-embed_model = layers.Dense(32, activation='relu')(embed_model)
-embed_model = layers.BatchNormalization()(embed_model)
-embed_model = layers.Dense(16, activation='relu')(embed_model)
-embed_model = layers.BatchNormalization()(embed_model)
-embed_output = layers.Dense(1, activation='sigmoid')(embed_model)
+model.add(layers.Flatten())
+model.add(layers.Dense(32, activation='relu'))
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(16, activation='relu'))
+model.add(layers.BatchNormalization())
 
-embed_model = Model(inputs=embed_input, outputs=embed_output)
-
-
+model.add(layers.Dense(1, activation='sigmoid'))
 
 # model compile
-embed_model.compile(optimizer='adam',
+model.compile(optimizer='adam',
              loss='binary_crossentropy', metrics=['acc'])
-print(embed_model.summary())
+print(model.summary())
 
 # keras.callbacks
 callbacks_list = [ReduceLROnPlateau(
@@ -72,13 +69,13 @@ callbacks_list = [ReduceLROnPlateau(
                     ModelCheckpoint(
                         filepath='best_model.h5', monitor='val_loss', save_best_only=True)]
 
-history = embed_model.fit(pad_train, train_y_label,
+history = model.fit(pad_train, train_y_label,
                      epochs=2, batch_size=1024,
                      callbacks=callbacks_list, 
-                     validation_split=0.2)
+                     validation_split=0.3)
                      
 ## predict test_set
-test_pred = embed_model.predict(pad_test)
+test_pred = model.predict(pad_test)
 
 sample_result = pd.DataFrame()
 sample_result['id'] = test_df.index
