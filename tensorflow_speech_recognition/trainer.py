@@ -27,7 +27,7 @@ BATCH_SIZE = 32  # 데이터 묶음에 해당하는 batch_size는 GPU 메모리�
 mGPU = False  # multi-GPU를 사용할 경우에는 True로 지정한다
 epochs = 20  # 모델이 훈련 데이터를 학습하는 횟수를 지정한다
 mode = 'cv' # 교차 검증 모드(cv) or 테스트 모드(test)
-model_name = 'model/model_resnet.pth'  # 모델 결과물을 저장할 때 모델 이름을 지정한다
+model_name = 'model_resnet.pth'  # 모델 결과물을 저장할 때 모델 이름을 지정한다
 
 # ResNet 모델을 활성화한다
 loss_fn = torch.nn.CrossEntropyLoss()
@@ -129,7 +129,6 @@ for e in range(epochs):
         print("cv accuracy:", 100. * num_correct / len(preds), get_time(time(), start_time))
 
 # 학습이 완료된 모델을 저장한다
-create_directory("model")
 torch.save(speechmodel.state_dict(), model_name)
 
 # 테스트 데이터에 대한 예측값을 파일에 저장한다
